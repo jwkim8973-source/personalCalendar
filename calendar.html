@@ -838,6 +838,92 @@
       .daily-body {
         padding: 18px;
       }
+      /* 하루 일과 블록: 라벨·테두리 없이 글쓰기에 가깝게 */
+      .block-row {
+        position: relative;
+        padding: 3px 34px 3px 2px;
+        border-radius: 7px;
+      }
+      .block-row:hover {
+        background: #f7f9fd;
+      }
+      .block-controls {
+        position: absolute;
+        top: 1px;
+        right: 1px;
+        display: flex;
+        gap: 2px;
+        opacity: 0.32;
+      }
+      .block-row:hover .block-controls,
+      .block-controls:focus-within {
+        opacity: 1;
+      }
+      .block-controls button {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        padding: 3px 6px;
+        font-size: 11px;
+        border-radius: 5px;
+      }
+      .block-controls button:hover {
+        background: var(--soft);
+        color: var(--blue);
+      }
+      .block-controls button.danger:hover {
+        background: #fbe9ea;
+        color: var(--danger);
+      }
+      .block-input {
+        display: block;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        resize: none;
+        overflow: hidden;
+        font: inherit;
+        color: inherit;
+        padding: 5px 4px;
+        line-height: 1.7;
+        border-radius: 5px;
+      }
+      .block-input:focus {
+        outline: none;
+        background: #f1f5fc;
+      }
+      .block-heading {
+        font-weight: 700;
+        font-size: 18px;
+      }
+      .block-code {
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 12.5px;
+        background: #f3f4f7;
+        border-radius: 7px;
+        white-space: pre;
+      }
+      .toggle-head {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+      .toggle-caret {
+        flex: none;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        padding: 4px 6px;
+        font-size: 11px;
+        border-radius: 5px;
+      }
+      .toggle-caret:hover {
+        background: var(--soft);
+        color: var(--blue);
+      }
+      .block-toggle-body {
+        padding-left: 24px;
+      }
       /* 종일·마감·시간을 제목과 구분하는 배지 */
       .event-label {
         display: inline-block;
@@ -1104,12 +1190,6 @@
         DBNAME = "haru-calendar-files-v1";
       const DIARY_CACHE = "haru-diary-v1";
       const DIARY_BLOCK_TYPES = ["paragraph", "heading", "toggle", "code"];
-      const DIARY_BLOCK_LABEL = {
-        paragraph: "문단",
-        heading: "헤딩",
-        toggle: "토글",
-        code: "코드",
-      };
       const todayStr = () => dateKey(new Date());
       function dateKey(d) {
         return (
@@ -2373,71 +2453,70 @@
         cursor = parseDay(selected);
         render();
       }
+      function autosize(el) {
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+      }
+      function autosizeAll(root) {
+        root.querySelectorAll("textarea.block-input").forEach(autosize);
+      }
       function renderBlock(b, i, total) {
-        const label = DIARY_BLOCK_LABEL[b.type];
         const moveUp = i > 0,
           moveDown = i < total - 1;
         let body = "";
         if (b.type === "toggle") {
           body =
-            '<input class="full" data-block-title="' +
+            '<div class="toggle-head"><button type="button" class="toggle-caret" data-toggle-open="' +
+            esc(b.id) +
+            '">' +
+            (b.open ? "▾" : "▸") +
+            '</button><input class="block-input block-heading" style="font-size:14px" data-block-title="' +
             esc(b.id) +
             '" placeholder="토글 제목" value="' +
             esc(b.title || "") +
-            '" style="margin-bottom:6px">' +
-            '<button type="button" class="small ghost" data-toggle-open="' +
-            esc(b.id) +
-            '">' +
-            (b.open ? "▾ 접기" : "▸ 펼치기") +
-            "</button>" +
+            '"></div>' +
             (b.open
-              ? '<textarea class="full" data-block-text="' +
+              ? '<textarea class="block-input block-toggle-body" data-block-text="' +
                 esc(b.id) +
-                '" placeholder="토글 안에 들어갈 내용" style="margin-top:6px">' +
+                '" placeholder="토글 안에 들어갈 내용">' +
                 esc(b.text) +
                 "</textarea>"
               : "");
         } else if (b.type === "code") {
           body =
-            '<textarea class="full" data-block-text="' +
+            '<textarea class="block-input block-code" data-block-text="' +
             esc(b.id) +
-            '" placeholder="코드를 입력하세요" style="font-family:ui-monospace,Consolas,monospace;min-height:100px">' +
+            '" placeholder="코드를 입력하세요">' +
             esc(b.text) +
             "</textarea>";
         } else if (b.type === "heading") {
           body =
-            '<input class="full" data-block-text="' +
+            '<input class="block-input block-heading" data-block-text="' +
             esc(b.id) +
             '" placeholder="헤딩" value="' +
             esc(b.text) +
-            '" style="font-weight:700;font-size:16px">';
+            '">';
         } else {
           body =
-            '<textarea class="full" data-block-text="' +
+            '<textarea class="block-input" data-block-text="' +
             esc(b.id) +
             '" placeholder="내용을 입력하세요">' +
             esc(b.text) +
             "</textarea>";
         }
         return (
-          '<div class="entry" data-block-id="' +
+          '<div class="block-row" data-block-id="' +
           esc(b.id) +
-          '" style="cursor:default"><div class="small muted" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span>' +
-          label +
-          '</span><span class="inline-actions">' +
+          '"><div class="block-controls">' +
           (moveUp
-            ? '<button type="button" class="small ghost" data-move="up" data-block="' +
-              esc(b.id) +
-              '">↑</button>'
+            ? '<button type="button" data-move="up" data-block="' + esc(b.id) + '">↑</button>'
             : "") +
           (moveDown
-            ? '<button type="button" class="small ghost" data-move="down" data-block="' +
-              esc(b.id) +
-              '">↓</button>'
+            ? '<button type="button" data-move="down" data-block="' + esc(b.id) + '">↓</button>'
             : "") +
-          '<button type="button" class="small ghost danger" data-remove-block="' +
+          '<button type="button" class="danger" data-remove-block="' +
           esc(b.id) +
-          '">✕</button></span></div>' +
+          '">✕</button></div>' +
           body +
           "</div>"
         );
@@ -2459,8 +2538,9 @@
             "</div>";
         }
         out +=
-          '<div class="inline-actions" style="margin-top:14px"><button type="button" data-add-block="paragraph">+ 문단</button><button type="button" data-add-block="heading">+ 헤딩</button><button type="button" data-add-block="toggle">+ 토글</button><button type="button" data-add-block="code">+ 코드</button></div>';
+          '<div class="inline-actions" style="margin-top:10px"><button type="button" class="small ghost" data-add-block="paragraph">+ 문단</button><button type="button" class="small ghost" data-add-block="heading">+ 헤딩</button><button type="button" class="small ghost" data-add-block="toggle">+ 토글</button><button type="button" class="small ghost" data-add-block="code">+ 코드</button></div>';
         $("dailyBody").innerHTML = out;
+        autosizeAll($("dailyBody"));
         renderDailyRight();
       }
       function renderDailyRight() {
@@ -2667,6 +2747,7 @@
         }
         const blockId = e.target.dataset.blockText;
         if (blockId) {
+          if (e.target.tagName === "TEXTAREA") autosize(e.target);
           const entry = diary.days[selected];
           const b = entry && entry.blocks.find((x) => x.id === blockId);
           if (b) {
