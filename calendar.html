@@ -924,6 +924,76 @@
       .block-toggle-body {
         padding-left: 24px;
       }
+      /* 하루 일과: 읽기 모드 */
+      .issue-banner {
+        border-left: 3px solid var(--danger);
+        background: #fdf1f2;
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 18px;
+      }
+      .issue-banner-title {
+        font-weight: 700;
+        margin-top: 2px;
+      }
+      .issue-field {
+        background: #fafbfd;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 18px;
+      }
+      .issue-field input:not([type="checkbox"]) {
+        width: 100%;
+      }
+      .issue-field input:disabled {
+        opacity: 0.45;
+      }
+      .block-toolbar {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin: 12px 0 0;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+      }
+      .block-toolbar button {
+        font-size: 12px;
+        border-radius: 20px;
+        padding: 6px 13px;
+      }
+      .block-view-heading {
+        font-size: 19px;
+        margin: 18px 0 8px;
+      }
+      .block-view-p {
+        margin: 6px 0;
+        line-height: 1.8;
+        overflow-wrap: anywhere;
+      }
+      .block-view-code {
+        background: #f3f4f7;
+        border-radius: 8px;
+        padding: 12px 14px;
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 12.5px;
+        overflow-x: auto;
+        margin: 10px 0;
+      }
+      .block-view-toggle {
+        margin: 10px 0;
+        border-radius: 8px;
+      }
+      .block-view-toggle summary {
+        cursor: pointer;
+        font-weight: 700;
+        padding: 4px 2px;
+      }
+      .block-view-toggle-body {
+        padding: 6px 2px 2px 18px;
+        color: #444;
+        line-height: 1.8;
+      }
       /* 종일·마감·시간을 제목과 구분하는 배지 */
       .event-label {
         display: inline-block;
@@ -1395,6 +1465,8 @@
             throw Error("이슈 제목 형식이 올바르지 않습니다.");
           const issueTitle =
             typeof entry.issueTitle === "string" ? entry.issueTitle.slice(0, 200) : "";
+          const hasIssue =
+            typeof entry.hasIssue === "boolean" ? entry.hasIssue : !!issueTitle.trim();
           if (!Array.isArray(entry.blocks)) throw Error("blocks 목록이 필요합니다.");
           const ids = new Set();
           const blocks = entry.blocks.map((b) => {
@@ -1422,7 +1494,7 @@
             }
             return { id: b.id, type: b.type, text };
           });
-          days[date] = { issueTitle, blocks };
+          days[date] = { issueTitle, hasIssue, blocks };
         }
         return { version: 1, days };
       }
@@ -2127,9 +2199,16 @@
         }
       }
       /* ---- 하루 일과 ---- */
-      function ensureDay(date) {
-        if (!diary.days[date]) diary.days[date] = { issueTitle: "", blocks: [] };
-        return diary.days[date];
+      function emptyDayEntry() {
+        return { issueTitle: "", hasIssue: false, blocks: [] };
+      }
+      function cloneDayEntry(date) {
+        const e = diary.days[date] || emptyDayEntry();
+        return {
+          issueTitle: e.issueTitle || "",
+          hasIssue: !!e.hasIssue,
+          blocks: (e.blocks || []).map((b) => ({ ...b })),
+        };
       }
       function diarySetStatus(s, error = false, action = false) {
         $("diarySaveText").textContent = s;
@@ -2444,7 +2523,15 @@
           diarySetStatus("하루일과 파일 자동 연결 실패 · 파일을 다시 선택하세요", true);
         }
       }
+      let dailyEditing = false,
+        dailyDraft = null;
+      function discardDailyEditor() {
+        return !dailyEditing || confirm("작성 중인 하루 일과를 취소할까요?");
+      }
       function dailyNav(action) {
+        if (!discardDailyEditor()) return;
+        dailyEditing = false;
+        dailyDraft = null;
         if (action === "today") {
           selected = todayStr();
         } else {
@@ -2460,7 +2547,13 @@
       function autosizeAll(root) {
         root.querySelectorAll("textarea.block-input").forEach(autosize);
       }
-      function renderBlock(b, i, total) {
+      const BLOCK_ADD_LABEL = {
+        paragraph: "¶ 문단",
+        heading: "H 헤딩",
+        toggle: "▸ 토글",
+        code: "〈〉 코드",
+      };
+      function renderBlockEditor(b, i, total) {
         const moveUp = i > 0,
           moveDown = i < total - 1;
         let body = "";
@@ -2521,33 +2614,124 @@
           "</div>"
         );
       }
+      function renderBlockRead(b) {
+        if (b.type === "heading")
+          return '<h3 class="block-view-heading">' + esc(b.text || "(제목 없음)") + "</h3>";
+        if (b.type === "code")
+          return '<pre class="block-view-code"><code>' + esc(b.text) + "</code></pre>";
+        if (b.type === "toggle")
+          return (
+            '<details class="block-view-toggle"' +
+            (b.open ? " open" : "") +
+            "><summary>" +
+            esc(b.title || "(제목 없음)") +
+            '</summary><div class="block-view-toggle-body">' +
+            (b.text ? esc(b.text).replace(/\n/g, "<br>") : '<span class="muted">내용 없음</span>') +
+            "</div></details>"
+          );
+        return '<p class="block-view-p">' + esc(b.text).replace(/\n/g, "<br>") + "</p>";
+      }
       function renderDaily() {
         $("dayTitle").textContent = dateLabel(selected);
-        const entry = diary.days[selected] || { issueTitle: "", blocks: [] };
-        let out =
-          '<div class="field" style="margin-bottom:14px"><label class="small muted">이슈 제목 (선택)</label><input id="issueTitleInput" placeholder="이슈가 있었다면 한 줄로 적어 주세요" maxlength="200" value="' +
-          esc(entry.issueTitle) +
-          '"></div>';
-        if (!entry.blocks.length) {
+        if (dailyEditing) {
+          renderDailyEdit();
+        } else {
+          renderDailyRead();
+        }
+        renderDailyRight();
+      }
+      function renderDailyRead() {
+        const entry = diary.days[selected] || emptyDayEntry();
+        let out = "";
+        if (entry.hasIssue) {
+          out +=
+            '<div class="issue-banner"><div class="eyebrow">ISSUE</div><div class="issue-banner-title">' +
+            esc(entry.issueTitle || "(제목 없음)") +
+            "</div></div>";
+        }
+        const visibleBlocks = entry.blocks.filter(
+          (b) => (b.type !== "paragraph" && b.type !== "code") || b.text.trim(),
+        );
+        if (!visibleBlocks.length && !entry.hasIssue) {
           out +=
             '<div class="empty"><div class="empty-icon">✎</div>아직 작성한 하루 일과가 없어요.<br>아래 버튼으로 시작해 보세요.</div>';
         } else {
-          out +=
-            '<div id="blockList">' +
-            entry.blocks.map((b, i) => renderBlock(b, i, entry.blocks.length)).join("") +
-            "</div>";
+          out += visibleBlocks.map(renderBlockRead).join("");
         }
         out +=
-          '<div class="inline-actions" style="margin-top:10px"><button type="button" class="small ghost" data-add-block="paragraph">+ 문단</button><button type="button" class="small ghost" data-add-block="heading">+ 헤딩</button><button type="button" class="small ghost" data-add-block="toggle">+ 토글</button><button type="button" class="small ghost" data-add-block="code">+ 코드</button></div>';
+          '<div style="margin-top:16px"><button type="button" class="primary" id="dailyEdit">✎ 수정</button></div>';
+        $("dailyBody").innerHTML = out;
+      }
+      function renderDailyEdit() {
+        const d = dailyDraft;
+        let out =
+          '<div class="issue-field"><label class="checkline"><input type="checkbox" id="hasIssueInput" ' +
+          (d.hasIssue ? "checked" : "") +
+          '> 오늘 이슈가 있었나요?</label><input id="issueTitleInput" placeholder="이슈 제목을 한 줄로 적어 주세요" maxlength="200" style="margin-top:8px" ' +
+          (d.hasIssue ? "" : "disabled") +
+          ' value="' +
+          esc(d.issueTitle) +
+          '"></div>';
+        if (!d.blocks.length) {
+          out +=
+            '<div class="empty"><div class="empty-icon">✎</div>아직 작성한 내용이 없어요. 아래에서 블록을 추가해 보세요.</div>';
+        } else {
+          out +=
+            '<div id="blockList">' +
+            d.blocks.map((b, i) => renderBlockEditor(b, i, d.blocks.length)).join("") +
+            "</div>";
+        }
+        out += '<div class="block-toolbar">';
+        for (const type of DIARY_BLOCK_TYPES)
+          out +=
+            '<button type="button" data-add-block="' +
+            type +
+            '">' +
+            BLOCK_ADD_LABEL[type] +
+            "</button>";
+        out += "</div>";
+        out +=
+          '<div class="form-buttons"><button type="button" class="primary" id="dailySave">저장</button><button type="button" id="dailyCancel">취소</button></div>';
         $("dailyBody").innerHTML = out;
         autosizeAll($("dailyBody"));
-        renderDailyRight();
+      }
+      function dailyStartEdit() {
+        dailyDraft = cloneDayEntry(selected);
+        dailyEditing = true;
+        renderDaily();
+      }
+      function dailyCancelEdit() {
+        if (!discardDailyEditor()) return;
+        dailyEditing = false;
+        dailyDraft = null;
+        renderDaily();
+      }
+      function dailySave() {
+        const draft = dailyDraft;
+        const payload = {
+          issueTitle: draft.hasIssue ? draft.issueTitle.trim() : "",
+          hasIssue: draft.hasIssue,
+          blocks: draft.blocks,
+        };
+        let result;
+        try {
+          result = validateDiary({ version: 1, days: { [selected]: payload } });
+        } catch (err) {
+          notify(err.message);
+          return;
+        }
+        diary.days[selected] = result.days[selected];
+        dailyEditing = false;
+        dailyDraft = null;
+        diaryChanged();
+        render();
+        notify("하루 일과를 저장했습니다.");
       }
       function renderDailyRight() {
         const monthPrefix =
           cursor.getFullYear() + "-" + String(cursor.getMonth() + 1).padStart(2, "0");
         const issues = Object.entries(diary.days)
-          .filter(([d, e]) => d.startsWith(monthPrefix) && e.issueTitle)
+          .filter(([d, e]) => d.startsWith(monthPrefix) && e.hasIssue)
           .sort((a, b) => a[0].localeCompare(b[0]));
         let out =
           '<div class="right-head"><div class="eyebrow">THIS MONTH</div><h2>이달의 이슈 사항</h2></div><div class="right-body">';
@@ -2560,7 +2744,7 @@
               '<div class="entry" data-issue-date="' +
               esc(d) +
               '" tabindex="0" role="button"><div class="entry-title">' +
-              esc(e.issueTitle) +
+              esc(e.issueTitle || "(제목 없음)") +
               '</div><div class="entry-meta">' +
               esc(d) +
               "</div></div>";
@@ -2653,61 +2837,73 @@
         }
         const nav = e.target.closest("[data-view]");
         if (nav) {
-          if (!discardEditor()) return;
+          if (!discardEditor() || !discardDailyEditor()) return;
           editing = false;
           activeId = null;
           activeSearch = null;
+          dailyEditing = false;
+          dailyDraft = null;
           view = nav.dataset.view;
           render();
           return;
         }
+        if (e.target.closest("#dailyEdit")) {
+          dailyStartEdit();
+          return;
+        }
+        if (e.target.closest("#dailyCancel")) {
+          dailyCancelEdit();
+          return;
+        }
+        if (e.target.closest("#dailySave")) {
+          dailySave();
+          return;
+        }
         const addBlockBtn = e.target.closest("[data-add-block]");
-        if (addBlockBtn) {
-          const entry = ensureDay(selected);
+        if (addBlockBtn && dailyDraft) {
           const type = addBlockBtn.dataset.addBlock;
           const block = { id: idGen(), type, text: "" };
           if (type === "toggle") {
             block.title = "";
             block.open = true;
           }
-          entry.blocks.push(block);
-          diaryChanged();
-          renderDaily();
+          dailyDraft.blocks.push(block);
+          renderDailyEdit();
           return;
         }
         const moveBtn = e.target.closest("[data-move]");
-        if (moveBtn) {
-          const entry = diary.days[selected];
-          const idx = entry.blocks.findIndex((b) => b.id === moveBtn.dataset.block);
+        if (moveBtn && dailyDraft) {
+          const idx = dailyDraft.blocks.findIndex((b) => b.id === moveBtn.dataset.block);
           const j = idx + (moveBtn.dataset.move === "up" ? -1 : 1);
-          if (j >= 0 && j < entry.blocks.length) {
-            [entry.blocks[idx], entry.blocks[j]] = [entry.blocks[j], entry.blocks[idx]];
-            diaryChanged();
-            renderDaily();
+          if (j >= 0 && j < dailyDraft.blocks.length) {
+            [dailyDraft.blocks[idx], dailyDraft.blocks[j]] = [
+              dailyDraft.blocks[j],
+              dailyDraft.blocks[idx],
+            ];
+            renderDailyEdit();
           }
           return;
         }
         const removeBtn = e.target.closest("[data-remove-block]");
-        if (removeBtn) {
-          if (confirm("이 블록을 삭제할까요?")) {
-            const entry = diary.days[selected];
-            entry.blocks = entry.blocks.filter((b) => b.id !== removeBtn.dataset.removeBlock);
-            diaryChanged();
-            renderDaily();
-          }
+        if (removeBtn && dailyDraft) {
+          dailyDraft.blocks = dailyDraft.blocks.filter(
+            (b) => b.id !== removeBtn.dataset.removeBlock,
+          );
+          renderDailyEdit();
           return;
         }
         const toggleBtn = e.target.closest("[data-toggle-open]");
-        if (toggleBtn) {
-          const entry = diary.days[selected];
-          const b = entry.blocks.find((x) => x.id === toggleBtn.dataset.toggleOpen);
+        if (toggleBtn && dailyDraft) {
+          const b = dailyDraft.blocks.find((x) => x.id === toggleBtn.dataset.toggleOpen);
           b.open = !b.open;
-          diaryChanged();
-          renderDaily();
+          renderDailyEdit();
           return;
         }
         const issueBtn = e.target.closest("[data-issue-date]");
         if (issueBtn) {
+          if (!discardDailyEditor()) return;
+          dailyEditing = false;
+          dailyDraft = null;
           selected = issueBtn.dataset.issueDate;
           cursor = parseDay(selected);
           render();
@@ -2739,31 +2935,22 @@
         } else if (id === "clearResults") resetSearch();
       });
       document.addEventListener("input", (e) => {
+        if (!dailyDraft) return;
         if (e.target.id === "issueTitleInput") {
-          ensureDay(selected).issueTitle = e.target.value;
-          diaryChanged();
-          renderDailyRight();
+          dailyDraft.issueTitle = e.target.value;
           return;
         }
         const blockId = e.target.dataset.blockText;
         if (blockId) {
           if (e.target.tagName === "TEXTAREA") autosize(e.target);
-          const entry = diary.days[selected];
-          const b = entry && entry.blocks.find((x) => x.id === blockId);
-          if (b) {
-            b.text = e.target.value;
-            diaryChanged();
-          }
+          const b = dailyDraft.blocks.find((x) => x.id === blockId);
+          if (b) b.text = e.target.value;
           return;
         }
         const titleBlockId = e.target.dataset.blockTitle;
         if (titleBlockId) {
-          const entry = diary.days[selected];
-          const b = entry && entry.blocks.find((x) => x.id === titleBlockId);
-          if (b) {
-            b.title = e.target.value;
-            diaryChanged();
-          }
+          const b = dailyDraft.blocks.find((x) => x.id === titleBlockId);
+          if (b) b.title = e.target.value;
           return;
         }
       });
@@ -2781,6 +2968,10 @@
         if (e.target.id === "eStart" && $("eEnd").value < $("eStart").value)
           $("eEnd").value = $("eStart").value;
         if (e.target.matches("[data-cat],#showDone")) render();
+        if (e.target.id === "hasIssueInput" && dailyDraft) {
+          dailyDraft.hasIssue = e.target.checked;
+          renderDailyEdit();
+        }
       });
       $("searchForm").onsubmit = (e) => {
         e.preventDefault();
@@ -2788,9 +2979,11 @@
           notify("검색 시작일은 종료일보다 늦을 수 없습니다.");
           return;
         }
-        if (!discardEditor()) return;
+        if (!discardEditor() || !discardDailyEditor()) return;
         editing = false;
         activeId = null;
+        dailyEditing = false;
+        dailyDraft = null;
         activeSearch = {
           target: $("target").value,
           keyword: $("keyword").value.trim(),
@@ -2804,8 +2997,10 @@
         $("searchSummary").textContent = "⌕ 검색조건 · 적용 중";
       };
       function resetSearch() {
-        if (!discardEditor()) return;
+        if (!discardEditor() || !discardDailyEditor()) return;
         editing = false;
+        dailyEditing = false;
+        dailyDraft = null;
         $("searchForm").reset();
         activeSearch = null;
         view = "month";
@@ -2910,7 +3105,7 @@
       ["help", "topHelp"].forEach((id) => ($(id).onclick = () => $("helpDialog").showModal()));
       $("closeHelp").onclick = () => $("helpDialog").close();
       window.addEventListener("beforeunload", (e) => {
-        if (dirty || editing || diaryDirty) {
+        if (dirty || editing || diaryDirty || dailyEditing) {
           e.preventDefault();
           e.returnValue = "";
         }
