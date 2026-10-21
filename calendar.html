@@ -190,7 +190,9 @@
       }
       .search {
         display: grid;
-        grid-template-columns: 110px minmax(140px, 1fr) 135px 18px 135px 100px 100px auto;
+        grid-template-columns:
+          110px minmax(140px, 1fr)
+          135px 18px 135px 100px 100px auto;
         gap: 8px;
         align-items: end;
         background: white;
@@ -513,8 +515,7 @@
         min-height: 43px;
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 10px;
+        gap: 0;
         padding: 7px 20px;
         z-index: 10;
         font-size: 12px;
@@ -522,6 +523,21 @@
       .footer button {
         font-size: 11px;
         padding: 4px 8px;
+      }
+      .footer-half {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex: 1;
+        min-width: 0;
+      }
+      .footer-divider {
+        width: 1px;
+        align-self: stretch;
+        background: var(--line);
+        margin: 0 14px;
+        flex: none;
       }
       .save-state {
         display: flex;
@@ -703,6 +719,12 @@
           position: static;
           flex-wrap: wrap;
         }
+        .footer-half {
+          flex-basis: 100%;
+        }
+        .footer-divider {
+          display: none;
+        }
         .shell {
           padding-bottom: 0;
         }
@@ -797,6 +819,25 @@
       .calendar-panel > .heading p {
         display: none;
       }
+      /* 하루 일과 패널 */
+      .daily-panel > .heading {
+        justify-content: center;
+        margin: 0;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+      .daily-panel > .heading > .actions {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .daily-panel #dayTitle {
+        margin: 0 8px;
+        font-size: 21px;
+      }
+      .daily-body {
+        padding: 18px;
+      }
       /* 종일·마감·시간을 제목과 구분하는 배지 */
       .event-label {
         display: inline-block;
@@ -826,14 +867,20 @@
         .search-popover .search-buttons {
           grid-column: 1 / -1;
         }
-        .calendar-panel > .heading {
+        .calendar-panel > .heading,
+        .daily-panel > .heading {
           padding: 14px 8px;
         }
-        .calendar-panel > .heading > .actions {
+        .calendar-panel > .heading > .actions,
+        .daily-panel > .heading > .actions {
           gap: 6px;
         }
         .calendar-panel #monthTitle {
           font-size: 21px;
+          margin: 0 3px;
+        }
+        .daily-panel #dayTitle {
+          font-size: 18px;
           margin: 0 3px;
         }
       }
@@ -853,14 +900,16 @@
           <p class="side-label">WORKSPACE</p>
           <nav class="nav" aria-label="보기 방식">
             <button data-view="month" class="active">▦　월간 달력</button
-            ><button data-view="list">≡　일정 목록</button>
+            ><button data-view="list">≡　일정 목록</button
+            ><button data-view="daily">✎　하루 일과</button>
           </nav>
         </section>
         <section>
           <p class="side-label">빠른 확인</p>
           <nav class="nav" aria-label="빠른 확인">
             <button data-view="today">
-              오늘 일정 <span id="todayCount" class="badge" style="float: right">0</span></button
+              오늘 일정
+              <span id="todayCount" class="badge" style="float: right">0</span></button
             ><button data-view="week">앞으로 7일</button
             ><button data-view="late">기한 지난 할 일</button>
           </nav>
@@ -934,7 +983,7 @@
             <button id="connect">파일 선택</button><button id="newFile">새 JSON 만들기</button>
           </div>
         </div>
-        <div class="workspace">
+        <div class="workspace" id="calendarWorkspace">
           <section class="panel calendar-panel">
             <header class="heading">
               <div class="actions">
@@ -951,20 +1000,51 @@
           </section>
           <aside class="panel" id="right" aria-label="일정 상세"></aside>
         </div>
+        <div class="workspace" id="dailyWorkspace" style="display: none">
+          <section class="panel daily-panel">
+            <header class="heading">
+              <div class="actions">
+                <button id="dayPrev" aria-label="전날">‹</button>
+                <h1 id="dayTitle"></h1>
+                <button id="dayNext" aria-label="다음날">›</button>
+                <button id="dayToday">오늘</button>
+              </div>
+            </header>
+            <div id="dailyBody" class="daily-body" aria-label="하루 일과"></div>
+          </section>
+          <aside class="panel" id="dailyRight" aria-label="이달의 이슈"></aside>
+        </div>
       </main>
     </div>
     <footer class="footer">
-      <div class="save-state" role="status" aria-live="polite">
-        <span id="statusDot" class="dot" style="background: #d4a24a"></span
-        ><span id="saveText">브라우저 임시 보관 · JSON 미연결</span
-        ><button id="retry" class="hide">접근 허용 / 다시 저장</button>
+      <div class="footer-half">
+        <div class="save-state" role="status" aria-live="polite">
+          <span id="statusDot" class="dot" style="background: #d4a24a"></span
+          ><span id="saveText">브라우저 임시 보관 · 일정 JSON 미연결</span
+          ><button id="retry" class="hide">접근 허용 / 다시 저장</button>
+        </div>
+        <div class="inline-actions">
+          <button id="footerConnect">파일 변경</button><button id="backup">JSON 백업</button
+          ><button id="fallbackImport">JSON 불러오기</button>
+        </div>
       </div>
-      <div class="inline-actions">
-        <button id="footerConnect">파일 변경</button><button id="backup">JSON 백업</button
-        ><button id="fallbackImport">JSON 불러오기</button>
+      <div class="footer-divider"></div>
+      <div class="footer-half">
+        <div class="save-state" role="status" aria-live="polite">
+          <span id="diaryStatusDot" class="dot" style="background: #d4a24a"></span
+          ><span id="diarySaveText">브라우저 임시 보관 · 하루일과 JSON 미연결</span
+          ><button id="diaryRetry" class="hide">접근 허용 / 다시 저장</button>
+        </div>
+        <div class="inline-actions">
+          <button id="diaryFooterConnect">파일 변경</button
+          ><button id="diaryNewFile">새 JSON 만들기</button
+          ><button id="diaryBackup">JSON 백업</button
+          ><button id="diaryFallbackImport">JSON 불러오기</button>
+        </div>
       </div>
     </footer>
     <input type="file" id="fileInput" accept=".json,application/json" hidden />
+    <input type="file" id="diaryFileInput" accept=".json,application/json" hidden />
     <dialog id="helpDialog">
       <h2>하루 사용 안내</h2>
       <p>
@@ -981,8 +1061,9 @@
           확인하세요.
         </li>
         <li>
-          다음 실행 시 연결을 복원합니다. 브라우저 정책에 따라 <b>접근 허용</b>을 다시 눌러야 할 수
-          있습니다. HTML 파일의 위치·이름이나 브라우저를 바꾸면 다시 선택해야 할 수 있습니다.
+          다음 실행 시 연결을 복원합니다. 브라우저 정책에 따라
+          <b>접근 허용</b>을 다시 눌러야 할 수 있습니다. HTML 파일의 위치·이름이나 브라우저를 바꾸면
+          다시 선택해야 할 수 있습니다.
         </li>
         <li>
           상단에서 제목·메모, 기간, 분류, 상태를 검색하세요. 기간은 일정과 겹치는 날짜를 찾으며,
@@ -991,6 +1072,10 @@
         <li>
           같은 JSON 파일은 한 창에서 편집하세요. 다른 창이나 프로그램의 변경이 감지되면 자동 저장을
           중단합니다.
+        </li>
+        <li>
+          <b>하루 일과</b> 탭은 일정과 별도인 <b>하루일과.json</b> 파일에 저장됩니다. 하단 footer
+          오른쪽에서 따로 연결·백업하세요.
         </li>
       </ol>
       <p>
@@ -1017,6 +1102,14 @@
       const STATUSES = ["예정", "진행 중", "완료"];
       const CACHE = "haru-calendar-v1",
         DBNAME = "haru-calendar-files-v1";
+      const DIARY_CACHE = "haru-diary-v1";
+      const DIARY_BLOCK_TYPES = ["paragraph", "heading", "toggle", "code"];
+      const DIARY_BLOCK_LABEL = {
+        paragraph: "문단",
+        heading: "헤딩",
+        toggle: "토글",
+        code: "코드",
+      };
       const todayStr = () => dateKey(new Date());
       function dateKey(d) {
         return (
@@ -1046,7 +1139,14 @@
       function esc(s) {
         return String(s ?? "").replace(
           /[&<>"']/g,
-          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
         );
       }
       const idGen = () =>
@@ -1072,11 +1172,30 @@
         ioBusy = false,
         cacheOK = true;
       let revision = 0;
+      let diary = { version: 1, days: {} },
+        diaryHandle = null,
+        diaryExpectedText = null,
+        diaryFileName = "",
+        diaryDirty = false,
+        diaryBlocked = false,
+        diaryRevision = 0,
+        diarySaveTimer = null,
+        diaryWriteChain = Promise.resolve(),
+        diaryLastSave = "",
+        diaryIoBusy = false;
       window.addEventListener("storage", (e) => {
         if (e.key === CACHE) {
           blocked = true;
           setStatus(
             "다른 창에서 일정이 변경됐습니다 · 현재 내용을 백업하고 한 창에서만 사용하세요",
+            true,
+            false,
+          );
+        }
+        if (e.key === DIARY_CACHE) {
+          diaryBlocked = true;
+          diarySetStatus(
+            "다른 창에서 하루일과가 변경됐습니다 · 현재 내용을 백업하고 한 창에서만 사용하세요",
             true,
             false,
           );
@@ -1178,6 +1297,68 @@
           "\n"
         );
       }
+      function validateDiary(data) {
+        if (
+          !data ||
+          data.version !== 1 ||
+          typeof data.days !== "object" ||
+          data.days === null ||
+          Array.isArray(data.days)
+        )
+          throw Error("지원하는 하루일과 JSON이 아닙니다. version: 1과 days 객체가 필요합니다.");
+        const days = {};
+        for (const [date, entry] of Object.entries(data.days)) {
+          if (!validDate(date)) throw Error("날짜 키가 올바르지 않습니다: " + date);
+          if (!entry || typeof entry !== "object")
+            throw Error("하루 데이터 형식이 올바르지 않습니다.");
+          if (typeof entry.issueTitle !== "undefined" && typeof entry.issueTitle !== "string")
+            throw Error("이슈 제목 형식이 올바르지 않습니다.");
+          const issueTitle =
+            typeof entry.issueTitle === "string" ? entry.issueTitle.slice(0, 200) : "";
+          if (!Array.isArray(entry.blocks)) throw Error("blocks 목록이 필요합니다.");
+          const ids = new Set();
+          const blocks = entry.blocks.map((b) => {
+            if (
+              !b ||
+              typeof b.id !== "string" ||
+              !b.id ||
+              ids.has(b.id) ||
+              !DIARY_BLOCK_TYPES.includes(b.type)
+            )
+              throw Error("블록 데이터 형식이 올바르지 않습니다.");
+            ids.add(b.id);
+            const text = typeof b.text === "string" ? b.text : "";
+            if (text.length > 20000) throw Error("블록 내용이 너무 깁니다.");
+            if (b.type === "toggle") {
+              if (typeof b.title !== "undefined" && typeof b.title !== "string")
+                throw Error("토글 제목 형식이 올바르지 않습니다.");
+              return {
+                id: b.id,
+                type: "toggle",
+                title: typeof b.title === "string" ? b.title.slice(0, 200) : "",
+                text,
+                open: !!b.open,
+              };
+            }
+            return { id: b.id, type: b.type, text };
+          });
+          days[date] = { issueTitle, blocks };
+        }
+        return { version: 1, days };
+      }
+      function serializeDiary() {
+        return (
+          JSON.stringify(
+            {
+              version: 1,
+              updatedAt: new Date().toISOString(),
+              days: diary.days,
+            },
+            null,
+            2,
+          ) + "\n"
+        );
+      }
       function openDB() {
         return new Promise((resolve, reject) => {
           const req = indexedDB.open(DBNAME, 1);
@@ -1186,24 +1367,24 @@
           req.onerror = () => reject(req.error);
         });
       }
-      function dbGet() {
+      function dbGet(key = "handle") {
         return new Promise((resolve, reject) => {
-          const req = db.transaction("settings").objectStore("settings").get("handle");
+          const req = db.transaction("settings").objectStore("settings").get(key);
           req.onsuccess = () => resolve(req.result);
           req.onerror = () => reject(req.error);
         });
       }
-      function dbSet(h) {
+      function dbSet(key, h) {
         return new Promise((resolve, reject) => {
           const tx = db.transaction("settings", "readwrite");
-          tx.objectStore("settings").put(h, "handle");
+          tx.objectStore("settings").put(h, key);
           tx.oncomplete = resolve;
           tx.onerror = () => reject(tx.error);
         });
       }
-      async function remember(h) {
+      async function remember(key, h) {
         try {
-          if (db) await dbSet(h);
+          if (db) await dbSet(key, h);
         } catch (e) {
           notify("파일은 연결됐지만 다음 실행 때 다시 선택해야 할 수 있습니다.");
         }
@@ -1275,6 +1456,13 @@
         document
           .querySelectorAll("[data-view]")
           .forEach((b) => b.classList.toggle("active", !activeSearch && b.dataset.view === view));
+        const isDaily = view === "daily" && !activeSearch;
+        $("calendarWorkspace").style.display = isDaily ? "none" : "";
+        $("dailyWorkspace").style.display = isDaily ? "" : "none";
+        if (isDaily) {
+          renderDaily();
+          return;
+        }
         if (view === "month" && !activeSearch) renderMonth();
         else renderList();
         if (!editing) renderRight();
@@ -1673,7 +1861,12 @@
         ioBusy = true;
         try {
           const [h] = await showOpenFilePicker({
-            types: [{ description: "일정 JSON", accept: { "application/json": [".json"] } }],
+            types: [
+              {
+                description: "일정 JSON",
+                accept: { "application/json": [".json"] },
+              },
+            ],
             multiple: false,
           });
           ioBusy = false;
@@ -1696,7 +1889,7 @@
           editing = false;
           activeId = null;
           revision++;
-          await remember(h);
+          await remember("handle", h);
           cache();
           const granted = (await h.queryPermission({ mode: "readwrite" })) === "granted";
           setStatus(
@@ -1733,7 +1926,12 @@
         try {
           const h = await showSaveFilePicker({
             suggestedName: "일정.json",
-            types: [{ description: "일정 JSON", accept: { "application/json": [".json"] } }],
+            types: [
+              {
+                description: "일정 JSON",
+                accept: { "application/json": [".json"] },
+              },
+            ],
           });
           ioBusy = false;
           await settleIO();
@@ -1756,7 +1954,7 @@
           dirty = rev !== revision;
           blocked = false;
           lastSave = new Date().toLocaleTimeString("ko-KR");
-          await remember(h);
+          await remember("handle", h);
           cache();
           setStatus(fileName + " · 파일 저장 완료 " + lastSave);
           updateBanner();
@@ -1770,7 +1968,9 @@
       async function retry() {
         if (!handle || ioBusy) return;
         try {
-          const permission = await handle.requestPermission({ mode: "readwrite" });
+          const permission = await handle.requestPermission({
+            mode: "readwrite",
+          });
           if (permission !== "granted") {
             notify("파일 접근을 허용해야 자동 저장할 수 있습니다.");
             return;
@@ -1814,7 +2014,7 @@
       async function restoreHandle() {
         try {
           db = await openDB();
-          const h = await dbGet();
+          const h = await dbGet("handle");
           if (!h) return;
           handle = h;
           fileName = h.name;
@@ -1845,6 +2045,448 @@
           setStatus("파일 자동 연결 실패 · 파일을 다시 선택하세요", true);
           updateBanner();
         }
+      }
+      /* ---- 하루 일과 ---- */
+      function ensureDay(date) {
+        if (!diary.days[date]) diary.days[date] = { issueTitle: "", blocks: [] };
+        return diary.days[date];
+      }
+      function diarySetStatus(s, error = false, action = false) {
+        $("diarySaveText").textContent = s;
+        $("diaryStatusDot").style.background = error
+          ? "#cf4f60"
+          : diaryDirty
+            ? "#d4a24a"
+            : "#298b76";
+        $("diarySaveText").classList.toggle("status-error", error);
+        $("diaryRetry").classList.toggle("hide", !action);
+      }
+      function cacheDiary() {
+        try {
+          localStorage.setItem(
+            DIARY_CACHE,
+            JSON.stringify({
+              days: diary.days,
+              dirty: diaryDirty,
+              fileName: diaryFileName,
+              lastSave: diaryLastSave,
+              revision: diaryRevision,
+            }),
+          );
+        } catch (e) {
+          notify("하루일과 임시 저장 실패.");
+        }
+      }
+      function readDiaryCache() {
+        try {
+          const c = JSON.parse(localStorage.getItem(DIARY_CACHE) || "null");
+          if (c) {
+            diary = validateDiary({ version: 1, days: c.days || {} });
+            diaryDirty = !!c.dirty;
+            diaryFileName = typeof c.fileName === "string" ? c.fileName : "";
+            diaryLastSave = c.lastSave || "";
+            diaryRevision = Number(c.revision) || 0;
+          }
+        } catch (e) {
+          notify("하루일과 임시 데이터를 읽을 수 없습니다.");
+        }
+      }
+      function diaryChanged() {
+        diaryDirty = true;
+        diaryRevision++;
+        cacheDiary();
+        if (diaryHandle && !diaryBlocked) {
+          diarySetStatus(diaryFileName + " · 저장 중…");
+          clearTimeout(diarySaveTimer);
+          diarySaveTimer = setTimeout(diaryQueueSave, 350);
+        } else {
+          diarySetStatus(
+            (diaryFileName ? diaryFileName + " · " : "") + "브라우저 임시 보관 · 파일 저장 필요",
+            true,
+            !!diaryHandle,
+          );
+        }
+      }
+      async function diaryQueueSave() {
+        clearTimeout(diarySaveTimer);
+        diaryWriteChain = diaryWriteChain.then(diarySaveFile).catch((err) => {
+          diaryBlocked = true;
+          diarySetStatus(diaryFileName + " · 저장 실패: " + err.message, true, true);
+        });
+        return diaryWriteChain;
+      }
+      async function diarySaveFile() {
+        if (!diaryHandle || !diaryDirty || diaryBlocked || diaryIoBusy) return;
+        try {
+          if ((await diaryHandle.queryPermission({ mode: "readwrite" })) !== "granted") {
+            diaryBlocked = true;
+            diarySetStatus(diaryFileName + " · 접근 허용 필요 · 임시 보관 중", true, true);
+            return;
+          }
+          const disk = await (await diaryHandle.getFile()).text();
+          if (diaryExpectedText === null || disk !== diaryExpectedText) {
+            diaryBlocked = true;
+            diarySetStatus(
+              diaryFileName + " · 외부 변경 감지 · 백업 후 파일을 다시 선택하세요",
+              true,
+              false,
+            );
+            notify("다른 프로그램에서 하루일과 파일이 바뀌었습니다. 덮어쓰기를 중단했습니다.");
+            return;
+          }
+          const snapshot = serializeDiary(),
+            rev = diaryRevision,
+            writer = await diaryHandle.createWritable();
+          try {
+            await writer.write(snapshot);
+            await writer.close();
+          } catch (err) {
+            try {
+              await writer.abort();
+            } catch (_) {}
+            throw err;
+          }
+          diaryExpectedText = snapshot;
+          diaryLastSave = new Date().toLocaleTimeString("ko-KR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          });
+          if (rev === diaryRevision) diaryDirty = false;
+          cacheDiary();
+          if (!diaryDirty) {
+            diarySetStatus(diaryFileName + " · 파일 저장 완료 " + diaryLastSave);
+          } else {
+            diarySetStatus(diaryFileName + " · 변경 사항 저장 중…");
+            setTimeout(diaryQueueSave, 0);
+          }
+        } catch (err) {
+          diaryBlocked = true;
+          diarySetStatus(diaryFileName + " · 파일 저장 실패 · 임시 보관 중", true, true);
+          notify(
+            "하루일과 파일에 저장하지 못했습니다. 접근 허용 후 다시 시도하거나 JSON 백업을 해 주세요.",
+          );
+        }
+      }
+      async function diaryReadConnected(h) {
+        const text = await (await h.getFile()).text();
+        const parsed = validateDiary(JSON.parse(text));
+        return { text, parsed };
+      }
+      async function diarySettleIO() {
+        clearTimeout(diarySaveTimer);
+        await diaryWriteChain;
+        if (diaryDirty && diaryHandle && !diaryBlocked) await diaryQueueSave();
+      }
+      async function diaryChooseFile() {
+        if (diaryIoBusy) return;
+        if (!window.showOpenFilePicker) {
+          notify("직접 파일 저장을 지원하지 않습니다. JSON 불러오기와 백업을 사용하세요.");
+          $("diaryFileInput").click();
+          return;
+        }
+        diaryIoBusy = true;
+        try {
+          const [h] = await showOpenFilePicker({
+            types: [
+              {
+                description: "하루일과 JSON",
+                accept: { "application/json": [".json"] },
+              },
+            ],
+            multiple: false,
+          });
+          diaryIoBusy = false;
+          await diarySettleIO();
+          diaryIoBusy = true;
+          const content = await diaryReadConnected(h);
+          if (
+            diaryDirty &&
+            !confirm(
+              "파일 내용을 불러오면 현재 임시 하루일과가 교체됩니다. 필요한 경우 취소 후 JSON 백업을 하세요. 계속할까요?",
+            )
+          )
+            return;
+          diary = content.parsed;
+          diaryHandle = h;
+          diaryExpectedText = content.text;
+          diaryFileName = h.name;
+          diaryDirty = false;
+          diaryBlocked = false;
+          diaryRevision++;
+          await remember("diaryHandle", h);
+          cacheDiary();
+          const granted = (await h.queryPermission({ mode: "readwrite" })) === "granted";
+          diarySetStatus(
+            diaryFileName + " · 불러오기 완료" + (granted ? "" : " · 저장 권한 허용 필요"),
+            !granted,
+            !granted,
+          );
+          diaryBlocked = !granted;
+          render();
+        } catch (err) {
+          fileError(err);
+        } finally {
+          diaryIoBusy = false;
+        }
+      }
+      async function diaryCreateFile() {
+        if (diaryIoBusy) return;
+        if (!window.showSaveFilePicker) {
+          notify("직접 저장이 지원되지 않아 하루일과 JSON을 다운로드합니다.");
+          diaryDownloadBackup();
+          return;
+        }
+        if (
+          !confirm(
+            "현재 하루일과를 새 JSON 파일에 저장합니다. 기존 파일을 선택하면 내용이 교체됩니다. 진행할까요?",
+          )
+        )
+          return;
+        diaryIoBusy = true;
+        try {
+          const h = await showSaveFilePicker({
+            suggestedName: "하루일과.json",
+            types: [
+              {
+                description: "하루일과 JSON",
+                accept: { "application/json": [".json"] },
+              },
+            ],
+          });
+          diaryIoBusy = false;
+          await diarySettleIO();
+          diaryIoBusy = true;
+          const snapshot = serializeDiary(),
+            rev = diaryRevision,
+            w = await h.createWritable();
+          try {
+            await w.write(snapshot);
+            await w.close();
+          } catch (err) {
+            try {
+              await w.abort();
+            } catch (_) {}
+            throw err;
+          }
+          diaryHandle = h;
+          diaryFileName = h.name;
+          diaryExpectedText = snapshot;
+          diaryDirty = rev !== diaryRevision;
+          diaryBlocked = false;
+          diaryLastSave = new Date().toLocaleTimeString("ko-KR");
+          await remember("diaryHandle", h);
+          cacheDiary();
+          diarySetStatus(diaryFileName + " · 파일 저장 완료 " + diaryLastSave);
+        } catch (err) {
+          fileError(err);
+        } finally {
+          diaryIoBusy = false;
+          if (diaryDirty && diaryHandle && !diaryBlocked) diaryQueueSave();
+        }
+      }
+      async function diaryRetry() {
+        if (!diaryHandle || diaryIoBusy) return;
+        try {
+          const permission = await diaryHandle.requestPermission({
+            mode: "readwrite",
+          });
+          if (permission !== "granted") {
+            notify("하루일과 파일 접근을 허용해야 자동 저장할 수 있습니다.");
+            return;
+          }
+          if (diaryExpectedText === null) {
+            const { text, parsed } = await diaryReadConnected(diaryHandle);
+            if (diaryDirty) {
+              if (
+                !confirm(
+                  "브라우저에 파일로 저장하지 못한 하루일과가 있습니다. 현재 내용을 연결된 JSON에 저장할까요? 취소하면 임시 내용을 유지합니다.",
+                )
+              )
+                return;
+              diaryExpectedText = text;
+            } else {
+              diary = parsed;
+              diaryExpectedText = text;
+              render();
+            }
+          }
+          diaryBlocked = false;
+          if (diaryDirty) await diaryQueueSave();
+          else diarySetStatus(diaryFileName + " · 연결 완료");
+        } catch (err) {
+          fileError(err);
+        }
+      }
+      function diaryDownloadBackup() {
+        const a = document.createElement("a"),
+          url = URL.createObjectURL(
+            new Blob([serializeDiary()], {
+              type: "application/json;charset=utf-8",
+            }),
+          );
+        a.href = url;
+        a.download = "하루일과_백업_" + todayStr() + ".json";
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        notify("하루일과 JSON 백업 다운로드를 요청했습니다.");
+      }
+      async function diaryRestoreHandle() {
+        try {
+          if (!db) db = await openDB();
+          const h = await dbGet("diaryHandle");
+          if (!h) return;
+          diaryHandle = h;
+          diaryFileName = h.name;
+          const p = await h.queryPermission({ mode: "readwrite" });
+          if (p !== "granted") {
+            diaryBlocked = true;
+            diarySetStatus(diaryFileName + " · 접근 허용 필요 · 임시 내용 표시 중", true, true);
+            return;
+          }
+          if (diaryDirty) {
+            diaryBlocked = true;
+            diarySetStatus(
+              diaryFileName + " · 미저장 임시 하루일과 복구됨 · 아래 버튼으로 저장 확인",
+              true,
+              true,
+            );
+            return;
+          }
+          const { text, parsed } = await diaryReadConnected(h);
+          diary = parsed;
+          diaryExpectedText = text;
+          cacheDiary();
+          diarySetStatus(diaryFileName + " · 자동 불러오기 완료");
+          render();
+        } catch (err) {
+          diaryBlocked = true;
+          diarySetStatus("하루일과 파일 자동 연결 실패 · 파일을 다시 선택하세요", true);
+        }
+      }
+      function dailyNav(action) {
+        if (action === "today") {
+          selected = todayStr();
+        } else {
+          selected = shiftDay(selected, action === "prev" ? -1 : 1);
+        }
+        cursor = parseDay(selected);
+        render();
+      }
+      function renderBlock(b, i, total) {
+        const label = DIARY_BLOCK_LABEL[b.type];
+        const moveUp = i > 0,
+          moveDown = i < total - 1;
+        let body = "";
+        if (b.type === "toggle") {
+          body =
+            '<input class="full" data-block-title="' +
+            esc(b.id) +
+            '" placeholder="토글 제목" value="' +
+            esc(b.title || "") +
+            '" style="margin-bottom:6px">' +
+            '<button type="button" class="small ghost" data-toggle-open="' +
+            esc(b.id) +
+            '">' +
+            (b.open ? "▾ 접기" : "▸ 펼치기") +
+            "</button>" +
+            (b.open
+              ? '<textarea class="full" data-block-text="' +
+                esc(b.id) +
+                '" placeholder="토글 안에 들어갈 내용" style="margin-top:6px">' +
+                esc(b.text) +
+                "</textarea>"
+              : "");
+        } else if (b.type === "code") {
+          body =
+            '<textarea class="full" data-block-text="' +
+            esc(b.id) +
+            '" placeholder="코드를 입력하세요" style="font-family:ui-monospace,Consolas,monospace;min-height:100px">' +
+            esc(b.text) +
+            "</textarea>";
+        } else if (b.type === "heading") {
+          body =
+            '<input class="full" data-block-text="' +
+            esc(b.id) +
+            '" placeholder="헤딩" value="' +
+            esc(b.text) +
+            '" style="font-weight:700;font-size:16px">';
+        } else {
+          body =
+            '<textarea class="full" data-block-text="' +
+            esc(b.id) +
+            '" placeholder="내용을 입력하세요">' +
+            esc(b.text) +
+            "</textarea>";
+        }
+        return (
+          '<div class="entry" data-block-id="' +
+          esc(b.id) +
+          '" style="cursor:default"><div class="small muted" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span>' +
+          label +
+          '</span><span class="inline-actions">' +
+          (moveUp
+            ? '<button type="button" class="small ghost" data-move="up" data-block="' +
+              esc(b.id) +
+              '">↑</button>'
+            : "") +
+          (moveDown
+            ? '<button type="button" class="small ghost" data-move="down" data-block="' +
+              esc(b.id) +
+              '">↓</button>'
+            : "") +
+          '<button type="button" class="small ghost danger" data-remove-block="' +
+          esc(b.id) +
+          '">✕</button></span></div>' +
+          body +
+          "</div>"
+        );
+      }
+      function renderDaily() {
+        $("dayTitle").textContent = dateLabel(selected);
+        const entry = diary.days[selected] || { issueTitle: "", blocks: [] };
+        let out =
+          '<div class="field" style="margin-bottom:14px"><label class="small muted">이슈 제목 (선택)</label><input id="issueTitleInput" placeholder="이슈가 있었다면 한 줄로 적어 주세요" maxlength="200" value="' +
+          esc(entry.issueTitle) +
+          '"></div>';
+        if (!entry.blocks.length) {
+          out +=
+            '<div class="empty"><div class="empty-icon">✎</div>아직 작성한 하루 일과가 없어요.<br>아래 버튼으로 시작해 보세요.</div>';
+        } else {
+          out +=
+            '<div id="blockList">' +
+            entry.blocks.map((b, i) => renderBlock(b, i, entry.blocks.length)).join("") +
+            "</div>";
+        }
+        out +=
+          '<div class="inline-actions" style="margin-top:14px"><button type="button" data-add-block="paragraph">+ 문단</button><button type="button" data-add-block="heading">+ 헤딩</button><button type="button" data-add-block="toggle">+ 토글</button><button type="button" data-add-block="code">+ 코드</button></div>';
+        $("dailyBody").innerHTML = out;
+        renderDailyRight();
+      }
+      function renderDailyRight() {
+        const monthPrefix =
+          cursor.getFullYear() + "-" + String(cursor.getMonth() + 1).padStart(2, "0");
+        const issues = Object.entries(diary.days)
+          .filter(([d, e]) => d.startsWith(monthPrefix) && e.issueTitle)
+          .sort((a, b) => a[0].localeCompare(b[0]));
+        let out =
+          '<div class="right-head"><div class="eyebrow">THIS MONTH</div><h2>이달의 이슈 사항</h2></div><div class="right-body">';
+        if (!issues.length) {
+          out +=
+            '<div class="empty"><div class="empty-icon">!</div>이번 달엔 기록된 이슈가 없어요.</div>';
+        } else {
+          for (const [d, e] of issues)
+            out +=
+              '<div class="entry" data-issue-date="' +
+              esc(d) +
+              '" tabindex="0" role="button"><div class="entry-title">' +
+              esc(e.issueTitle) +
+              '</div><div class="entry-meta">' +
+              esc(d) +
+              "</div></div>";
+        }
+        out += "</div>";
+        $("dailyRight").innerHTML = out;
       }
       function navigate(action) {
         if (!discardEditor()) return;
@@ -1881,12 +2523,16 @@
           $("searchCategory").insertAdjacentHTML("beforeend", "<option>" + name + "</option>");
         }
         readCache();
+        readDiaryCache();
         if (dirty) setStatus("미저장 임시 일정 복구됨 · JSON 연결 후 저장하세요", true);
+        if (diaryDirty)
+          diarySetStatus("미저장 임시 하루일과 복구됨 · JSON 연결 후 저장하세요", true);
         render();
         document.querySelector(".shell").inert = true;
         document.querySelector(".footer").inert = true;
         try {
           await restoreHandle();
+          await diaryRestoreHandle();
         } finally {
           document.querySelector(".shell").inert = false;
           document.querySelector(".footer").inert = false;
@@ -1935,6 +2581,58 @@
           render();
           return;
         }
+        const addBlockBtn = e.target.closest("[data-add-block]");
+        if (addBlockBtn) {
+          const entry = ensureDay(selected);
+          const type = addBlockBtn.dataset.addBlock;
+          const block = { id: idGen(), type, text: "" };
+          if (type === "toggle") {
+            block.title = "";
+            block.open = true;
+          }
+          entry.blocks.push(block);
+          diaryChanged();
+          renderDaily();
+          return;
+        }
+        const moveBtn = e.target.closest("[data-move]");
+        if (moveBtn) {
+          const entry = diary.days[selected];
+          const idx = entry.blocks.findIndex((b) => b.id === moveBtn.dataset.block);
+          const j = idx + (moveBtn.dataset.move === "up" ? -1 : 1);
+          if (j >= 0 && j < entry.blocks.length) {
+            [entry.blocks[idx], entry.blocks[j]] = [entry.blocks[j], entry.blocks[idx]];
+            diaryChanged();
+            renderDaily();
+          }
+          return;
+        }
+        const removeBtn = e.target.closest("[data-remove-block]");
+        if (removeBtn) {
+          if (confirm("이 블록을 삭제할까요?")) {
+            const entry = diary.days[selected];
+            entry.blocks = entry.blocks.filter((b) => b.id !== removeBtn.dataset.removeBlock);
+            diaryChanged();
+            renderDaily();
+          }
+          return;
+        }
+        const toggleBtn = e.target.closest("[data-toggle-open]");
+        if (toggleBtn) {
+          const entry = diary.days[selected];
+          const b = entry.blocks.find((x) => x.id === toggleBtn.dataset.toggleOpen);
+          b.open = !b.open;
+          diaryChanged();
+          renderDaily();
+          return;
+        }
+        const issueBtn = e.target.closest("[data-issue-date]");
+        if (issueBtn) {
+          selected = issueBtn.dataset.issueDate;
+          cursor = parseDay(selected);
+          render();
+          return;
+        }
         const id = e.target.closest("button")?.id;
         if (["add", "topAdd", "addSelected"].includes(id)) openEditor();
         else if (id === "closeDetail") {
@@ -1959,6 +2657,34 @@
             render();
           }
         } else if (id === "clearResults") resetSearch();
+      });
+      document.addEventListener("input", (e) => {
+        if (e.target.id === "issueTitleInput") {
+          ensureDay(selected).issueTitle = e.target.value;
+          diaryChanged();
+          renderDailyRight();
+          return;
+        }
+        const blockId = e.target.dataset.blockText;
+        if (blockId) {
+          const entry = diary.days[selected];
+          const b = entry && entry.blocks.find((x) => x.id === blockId);
+          if (b) {
+            b.text = e.target.value;
+            diaryChanged();
+          }
+          return;
+        }
+        const titleBlockId = e.target.dataset.blockTitle;
+        if (titleBlockId) {
+          const entry = diary.days[selected];
+          const b = entry && entry.blocks.find((x) => x.id === titleBlockId);
+          if (b) {
+            b.title = e.target.value;
+            diaryChanged();
+          }
+          return;
+        }
       });
       document.addEventListener("keydown", (e) => {
         if (e.target.matches('[role="button"]') && (e.key === "Enter" || e.key === " ")) {
@@ -2008,12 +2734,24 @@
       }
       $("reset").onclick = resetSearch;
       ["prev", "next", "today"].forEach((id) => ($(id).onclick = () => navigate(id)));
+      ["dayPrev", "dayNext", "dayToday"].forEach(
+        (id) =>
+          ($(id).onclick = () =>
+            dailyNav(id === "dayPrev" ? "prev" : id === "dayNext" ? "next" : "today")),
+      );
       ["connect", "footerConnect"].forEach((id) => ($(id).onclick = chooseFile));
       $("newFile").onclick = createFile;
       $("retry").onclick = retry;
       $("backup").onclick = downloadBackup;
       $("fallbackImport").onclick = () => {
         if (discardEditor()) $("fileInput").click();
+      };
+      $("diaryFooterConnect").onclick = diaryChooseFile;
+      $("diaryNewFile").onclick = diaryCreateFile;
+      $("diaryRetry").onclick = diaryRetry;
+      $("diaryBackup").onclick = diaryDownloadBackup;
+      $("diaryFallbackImport").onclick = () => {
+        $("diaryFileInput").click();
       };
       $("fileInput").onchange = async (e) => {
         const f = e.target.files[0];
@@ -2051,10 +2789,47 @@
           e.target.value = "";
         }
       };
+      $("diaryFileInput").onchange = async (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        try {
+          await diarySettleIO();
+          const data = validateDiary(JSON.parse(await f.text()));
+          if (
+            !confirm(
+              "하루일과 JSON 내용을 불러와 현재 내용을 교체할까요? 기존 파일 연결은 해제됩니다.",
+            )
+          )
+            return;
+          diaryHandle = null;
+          diaryExpectedText = null;
+          diaryBlocked = false;
+          diaryFileName = "";
+          diary = data;
+          diaryDirty = true;
+          diaryRevision++;
+          if (db)
+            try {
+              await new Promise((resolve, reject) => {
+                const tx = db.transaction("settings", "readwrite");
+                tx.objectStore("settings").delete("diaryHandle");
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+              });
+            } catch (_) {}
+          cacheDiary();
+          render();
+          diarySetStatus("가져오기 완료 · 파일 직접 연결 아님 · 백업 또는 새 파일 저장 필요", true);
+        } catch (err) {
+          fileError(err);
+        } finally {
+          e.target.value = "";
+        }
+      };
       ["help", "topHelp"].forEach((id) => ($(id).onclick = () => $("helpDialog").showModal()));
       $("closeHelp").onclick = () => $("helpDialog").close();
       window.addEventListener("beforeunload", (e) => {
-        if (dirty || editing) {
+        if (dirty || editing || diaryDirty) {
           e.preventDefault();
           e.returnValue = "";
         }
